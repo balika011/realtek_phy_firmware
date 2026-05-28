@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+
 #ifndef __PHY_PATCH_H__
 #define __PHY_PATCH_H__
 
