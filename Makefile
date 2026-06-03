@@ -10,6 +10,7 @@ obj-y += phy_patch.o
 fw += rtl8261n.bin
 fw += rtl8261n_lp.bin
 fw += rtl8264b.bin
+fw += rtl8261ce.bin
 
 # standard build tools
 CC ?= gcc

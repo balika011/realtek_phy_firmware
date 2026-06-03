@@ -143,6 +143,7 @@ int phy_patch_op(rt_phy_patch_db_t *pPhy_patchDb, struct phy_device *phydev, __u
 
 int phy_patch_rtl8261n_db_init(struct phy_device *phydev, rt_phy_patch_db_t **pPhy_patchDb);
 int phy_patch_rtl8261n_lp_db_init(struct phy_device *phydev, rt_phy_patch_db_t **pPhy_patchDb);
+int phy_patch_rtl8261ce_db_init(struct phy_device *phydev, rt_phy_patch_db_t **pPhy_patchDb);
 int phy_patch_rtl8264b_db_init(struct phy_device *phydev, rt_phy_patch_db_t **pPhy_patchDb);
 
 #endif

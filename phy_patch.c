@@ -137,6 +137,21 @@ void rtl8261n_lp()
 	free(phydev);
 }
 
+void rtl8261ce()
+{
+	printf("rtl8261ce\n");
+	struct phy_device *phydev = malloc(sizeof(struct phy_device));
+	phydev->f = fopen("rtl8261ce.bin", "wb");
+
+	phy_patch_rtl8261ce_db_init(phydev, &phydev->patch);
+
+	phy_patch(phydev);
+
+	fclose(phydev->f);
+	free(phydev->patch);
+	free(phydev);
+}
+
 void rtl8264b()
 {
 	printf("rtl8264b\n");
@@ -156,6 +171,7 @@ int main()
 {
 	rtl8261n();
 	rtl8261n_lp();
+	rtl8261ce();
 	rtl8264b();
 
 	return 0;
