@@ -158,6 +158,30 @@ static int _phy_rtl826x_flow_l2(struct phy_device *phydev)
 	return 0;
 }
 
+/*
+ * Last step of the RTL8261N patch as Realtek's PHY SDK code applies it in
+ * the stock firmware of the UniFi Cloud Gateway Fiber: step type 24 there,
+ * which is RTK_PATCH_TYPE_FLOW(10) here. Two host SerDes writes; page 7
+ * register 0x10 replaces the interim value that the SDS table writes. Without
+ * them the PHY never completes USXGMII in-band auto-negotiation towards the
+ * MAC.
+ */
+static int _phy_rtl826x_flow_s(struct phy_device *phydev)
+{
+	int ret = 0;
+	rt_phy_patch_db_t *pPatchDb = NULL;
+
+	PHYPATCH_DB_GET(phydev, pPatchDb);
+
+	if ((ret = phy_patch_op(pPatchDb, phydev, RTK_PATCH_OP_PSDS0, 0xFF, 0x07, 0x10, 15, 0, 0x80aa)) < 0)
+		return ret;
+
+	if ((ret = phy_patch_op(pPatchDb, phydev, RTK_PATCH_OP_PSDS0, 0xFF, 0x06, 0x12, 15, 0, 0x5078)) < 0)
+		return ret;
+
+	return 0;
+}
+
 static int _phy_rtl826x_flow_pi(struct phy_device *phydev)
 {
 	int ret = 0;
@@ -255,6 +279,11 @@ static int phy_patch_rtl826x_flow(struct phy_device *phydev, __u8 flow_id)
         	// as this is a dynamic one, it's implemented in the driver
                 return ret;
 
+        case RTK_PATCH_TYPE_FLOW(10):
+            if ((ret = _phy_rtl826x_flow_s(phydev)) < 0)
+                return ret;
+            break;
+
         case RTK_PATCH_TYPE_FLOW(5):
             if ((ret = _phy_rtl826x_flow_pi(phydev)) < 0)
                 return ret;
@@ -298,6 +327,7 @@ int phy_patch_rtl8261n_db_init(struct phy_device *phydev, rt_phy_patch_db_t **pP
     PHYPATCH_TABLE_ASSIGN(patch_db, 15, PHY_PATCH_TYPE_RTCT, rtl8261n_c_rtct_conf);
     PHYPATCH_TABLE_ASSIGN(patch_db, 16, RTK_PATCH_TYPE_FLOW(3), NULL);
     PHYPATCH_TABLE_ASSIGN(patch_db, 17, RTK_PATCH_TYPE_FLOW(4), NULL);
+    PHYPATCH_TABLE_ASSIGN(patch_db, 18, RTK_PATCH_TYPE_FLOW(10), NULL);
 
     *pPhy_patchDb = patch_db;
     return ret;
@@ -335,6 +365,7 @@ int phy_patch_rtl8261n_lp_db_init(struct phy_device *phydev, rt_phy_patch_db_t *
     PHYPATCH_TABLE_ASSIGN(patch_db, 15, PHY_PATCH_TYPE_RTCT, rtl8261n_lp_c_rtct_conf);
     PHYPATCH_TABLE_ASSIGN(patch_db, 16, RTK_PATCH_TYPE_FLOW(3), NULL);
     PHYPATCH_TABLE_ASSIGN(patch_db, 17, RTK_PATCH_TYPE_FLOW(4), NULL);
+    PHYPATCH_TABLE_ASSIGN(patch_db, 18, RTK_PATCH_TYPE_FLOW(10), NULL);
 
     *pPhy_patchDb = patch_db;
     return ret;
