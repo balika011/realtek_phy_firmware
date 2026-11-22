@@ -152,11 +152,27 @@ void rtl8264b()
 	free(phydev);
 }
 
+void rtl8264()
+{
+	printf("rtl8264\n");
+	struct phy_device *phydev = malloc(sizeof(struct phy_device));
+	phydev->f = fopen("rtl8264.bin", "wb");
+
+	phy_patch_rtl8264_db_init(phydev, &phydev->patch);
+
+	phy_patch(phydev);
+
+	fclose(phydev->f);
+	free(phydev->patch);
+	free(phydev);
+}
+
 int main()
 {
 	rtl8261n();
 	rtl8261n_lp();
 	rtl8264b();
+	rtl8264();
 
 	return 0;
 }

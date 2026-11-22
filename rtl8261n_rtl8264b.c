@@ -11,6 +11,7 @@
 #include "conf_rtl8264b.c"
 #include "conf_rtl8261n_c.c"
 #include "conf_rtl8261n_c_lp.c"
+#include "conf_rtl8264.c"
 
 static int phy_patch_rtl826x_op(struct phy_device *phydev, rtk_hwpatch_mainline_t *pPatch_data)
 {
@@ -108,6 +109,45 @@ static int _phy_rtl826x_flow_r2(struct phy_device *phydev)
 	// PHYReg w $PHYID 0xa43 28 0x0000
 	if ((ret = phy_patch_op(pPatchDb, phydev, RTK_PATCH_OP_PHY, 0xFF, 0xa43, 28, 15, 0, 0x0000)) < 0)
 		return ret;
+
+	// PHYReg_bit w $PHYID 0xb82 16 4 4 0x0
+	if ((ret = phy_patch_op(pPatchDb, phydev, RTK_PATCH_OP_PHY, 0xFF, 0xb82, 16, 4, 4, 0x0)) < 0)
+		return ret;
+	// set patch_rdy [PHYReg_bit r $PHYID 0xb80 16 6 6] ; Wait for patch ready != 1
+	if ((ret = phy_patch_op(pPatchDb, phydev, RTK_PATCH_OP_PHY_WAIT_NOT, 0xFF, 0xb80, 16, 6, 6, 1)) < 0)
+		return ret;
+
+	return 0;
+}
+
+/* RTL8264: patch request only. rtl8264_patch_conf writes its own patch key. */
+static int _phy_rtl826x_flow_r13(struct phy_device *phydev)
+{
+	int ret = 0;
+	rt_phy_patch_db_t *pPatchDb = NULL;
+
+	PHYPATCH_DB_GET(phydev, pPatchDb);
+
+	// PHYReg_bit w $PHYID 0xb82 16 4 4 0x1
+	if ((ret = phy_patch_op(pPatchDb, phydev, RTK_PATCH_OP_PHY, 0xFF, 0xb82, 16, 4, 4, 0x1)) < 0)
+		return ret;
+	// PHYReg_bit w $PHYID 0xb82 16 4 4 0x1
+	if ((ret = phy_patch_op(pPatchDb, phydev, RTK_PATCH_OP_PHY, 0xFF, 0xb82, 16, 4, 4, 0x1)) < 0)
+		return ret;
+	// set patch_rdy [PHYReg_bit r $PHYID 0xb80 16 6 6] ; Wait for patch ready = 1
+	if ((ret = phy_patch_op(pPatchDb, phydev, RTK_PATCH_OP_PHY_WAIT, 0xFF, 0xb80, 16, 6, 6, 1)) < 0)
+		return ret;
+
+	return 0;
+}
+
+/* RTL8264: release the patch request. rtl8264_patch_conf already clears the key. */
+static int _phy_rtl826x_flow_r22(struct phy_device *phydev)
+{
+	int ret = 0;
+	rt_phy_patch_db_t *pPatchDb = NULL;
+
+	PHYPATCH_DB_GET(phydev, pPatchDb);
 
 	// PHYReg_bit w $PHYID 0xb82 16 4 4 0x0
 	if ((ret = phy_patch_op(pPatchDb, phydev, RTK_PATCH_OP_PHY, 0xFF, 0xb82, 16, 4, 4, 0x0)) < 0)
@@ -234,6 +274,14 @@ static int phy_patch_rtl826x_flow(struct phy_device *phydev, __u8 flow_id)
             break;
         case RTK_PATCH_TYPE_FLOW(6):
             if ((ret = _phy_rtl826x_flow_r12(phydev)) < 0)
+                return ret;
+            break;
+        case RTK_PATCH_TYPE_FLOW(7):
+            if ((ret = _phy_rtl826x_flow_r13(phydev)) < 0)
+                return ret;
+            break;
+        case RTK_PATCH_TYPE_FLOW(8):
+            if ((ret = _phy_rtl826x_flow_r22(phydev)) < 0)
                 return ret;
             break;
         case RTK_PATCH_TYPE_FLOW(1):
@@ -373,6 +421,32 @@ int phy_patch_rtl8264b_db_init(struct phy_device *phydev, rt_phy_patch_db_t **pP
     PHYPATCH_TABLE_ASSIGN(patch_db, 16, RTK_PATCH_TYPE_FLOW(3), NULL);
     PHYPATCH_TABLE_ASSIGN(patch_db, 17, RTK_PATCH_TYPE_FLOW(5), NULL);
     PHYPATCH_TABLE_ASSIGN(patch_db, 18, RTK_PATCH_TYPE_FLOW(4), NULL);
+
+    *pPhy_patchDb = patch_db;
+    return ret;
+}
+
+int phy_patch_rtl8264_db_init(struct phy_device *phydev, rt_phy_patch_db_t **pPhy_patchDb)
+{
+    int ret = 0;
+    rt_phy_patch_db_t *patch_db = NULL;
+
+	patch_db = malloc(sizeof(rt_phy_patch_db_t));
+	if (!patch_db)
+        return -ENOMEM;
+
+    memset(patch_db, 0x0, sizeof(rt_phy_patch_db_t));
+
+    patch_db->fPatch_op = phy_patch_rtl826x_op;
+    patch_db->fPatch_flow = phy_patch_rtl826x_flow;
+
+    PHYPATCH_TABLE_ASSIGN(patch_db,  0, RTK_PATCH_TYPE_FLOW(7), NULL);
+    PHYPATCH_TABLE_ASSIGN(patch_db,  1, PHY_PATCH_TYPE_UC, rtl8264_patch_conf);
+    PHYPATCH_TABLE_ASSIGN(patch_db,  2, RTK_PATCH_TYPE_FLOW(8), NULL);
+    PHYPATCH_TABLE_ASSIGN(patch_db,  3, RTK_PATCH_TYPE_FLOW(2), NULL);
+    PHYPATCH_TABLE_ASSIGN(patch_db,  4, PHY_PATCH_TYPE_TOP, rtl8264_top_conf);
+    PHYPATCH_TABLE_ASSIGN(patch_db,  5, PHY_PATCH_TYPE_SDS, rtl8264_sds_conf);
+    PHYPATCH_TABLE_ASSIGN(patch_db,  6, RTK_PATCH_TYPE_FLOW(3), NULL);
 
     *pPhy_patchDb = patch_db;
     return ret;
